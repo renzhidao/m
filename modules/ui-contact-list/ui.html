@@ -1,0 +1,23 @@
+<div id="contact-list-container" data-target="#slot-sidebar" style="flex: 1; overflow-y: auto; padding: 8px;">
+    <!-- 静态项：公共频道 -->
+    <div class="contact-item active" data-id="all" data-name="公共频道" style="padding: 12px; margin-bottom: 4px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px;">
+        <div style="width: 32px; height: 32px; background: #2a7cff; border-radius: 50%; display: grid; place-items: center; font-weight: bold;">群</div>
+        <span>公共频道</span>
+    </div>
+
+    <!-- 动态列表容器 -->
+    <div id="contact-list-dynamic"></div>
+
+    <!-- 动态项模板 -->
+    <template id="tpl-contact-item">
+        <div class="contact-item" style="padding: 12px; margin-bottom: 4px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px;">
+            <div class="avatar" style="width: 32px; height: 32px; background: #555; border-radius: 50%; display: grid; place-items: center; font-size: 14px;"></div>
+            <span class="name"></span>
+        </div>
+    </template>
+
+    <style>
+        .contact-item:hover { background: #1f1f1f; }
+        .contact-item.active { background: #333; border-left: 3px solid #2a7cff; }
+    </style>
+</div>
