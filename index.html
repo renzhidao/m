@@ -1,60 +1,95 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P1 Modular V2 (Fixed)</title>
-    <style>
-        /* === 强制内联 Theme.css === */
-        :root {
-          --bg: #0e0f13; --panel: #13151b; --line: #2b3040;
-          --text: #e6e6e6; --sub: #8ea0b8; --primary: #2a7cff;
-          --bubble-me: #2a7cff; --bubble-other: #1f2937; --active: #1f232e;
-        }
-        body { margin: 0; height: 100vh; display: flex; overflow: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; }
-        
-        /* 滚动条 */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-        
-        /* 布局槽位 */
-        #slot-sidebar { width: 280px; border-right: 1px solid var(--line); display: flex; flex-direction: column; background: #0b0d12; transition: transform 0.3s; }
-        #slot-main { flex: 1; display: flex; flex-direction: column; position: relative; background: var(--bg); }
-        
-        /* 通用组件样式 */
-        .btn-icon { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; color: var(--sub); }
-        .btn-icon:hover { background: rgba(255,255,255,0.1); }
-        .btn-primary { background: var(--primary); color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        
-        /* 移动端适配 */
-        @media (max-width: 768px) {
-            #slot-sidebar { position: absolute; width: 100%; height: 100%; z-index: 10; transform: translateX(-100%); }
-            #slot-sidebar.show { transform: translateX(0); }
-        }
-
-        /* === 调试面板样式 === */
-        #debug-console {
-            position: fixed; bottom: 10px; right: 10px; 
-            background: rgba(0,0,0,0.8); border: 1px solid #444; 
-            color: #0f0; font-family: monospace; font-size: 10px;
-            padding: 10px; border-radius: 8px; z-index: 9999;
-            max-width: 200px; pointer-events: none;
-        }
-        .log-item { margin-bottom: 2px; }
-        .log-err { color: #f55; }
-        .log-ok { color: #5f5; }
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.0/dist/peerjs.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0e0f13" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="P1">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  
+  <title>P1 - 分布式聊天 (Modular)</title>
+  <link rel="stylesheet" href="style.css">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.0/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <div id="slot-sidebar"></div>
-    <div id="slot-main"></div>
-    <div id="slot-modal" style="position: fixed; inset: 0; pointer-events: none; z-index: 99;"></div>
-    
-    <!-- 调试显示 -->
-    <div id="debug-console"><div>系统自检中...</div></div>
 
-    <script type="module" src="./core/loader.js"></script>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="my-card">
+      <div class="my-info">
+        <div class="avatar" id="myAvatar">我</div>
+        <div style="flex:1;min-width:0">
+          <div class="my-name" id="myNick">-</div>
+          <div class="status-row">
+            <div class="dot" id="statusDot"></div>
+            <span id="statusText">离线</span>
+          </div>
+        </div>
+        <div class="btn-icon" id="btnSettings">⚙️</div>
+      </div>
+      <div class="status-row" style="justify-content:space-between">
+        <span>ID: <span id="myId">-</span></span>
+        <span id="onlineCount">0</span>
+      </div>
+    </div>
+    <div class="contact-list" id="contactList"></div>
+  </aside>
+
+  <main class="chat-area">
+    <header class="chat-header">
+      <div style="display:flex;align-items:center">
+        <div class="btn-icon mobile-back" id="btnBack">←</div>
+        <div>
+          <span class="ch-title" id="chatTitle">即时通讯</span>
+          <span class="ch-status" id="chatStatus"></span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px">
+      <div class="btn-icon" id="btnInstall" style="display:grid;color:#0f0;">📲</div>
+      <div class="btn-icon" id="btnToggleLog">📟</div>
+    </div>
+    </header>
+
+    <div class="msg-list" id="msgList"></div>
+
+    <section class="send-box">
+      <div class="btn-icon" id="btnFile">📎</div>
+      <div class="input-wrap">
+        <div id="editor" contenteditable="true"></div>
+      </div>
+      <button class="send-btn" id="btnSend">➤</button>
+      <input type="file" id="fileInput" style="display:none">
+    </section>
+    
+    <div class="mini-log" id="miniLog">
+      <div class="log-bar">
+        <button class="log-btn" id="btnDlLog">📥 下载日志</button>
+      </div>
+      <div class="log-content" id="logContent"></div>
+    </div>
+  </main>
+</div>
+
+<div id="settings-panel">
+  <div class="settings-box">
+    <h3 style="margin-top:0">设置</h3>
+    <input class="st-input" id="iptNick" placeholder="我的昵称">
+    <input class="st-input" id="iptPeer" placeholder="添加节点 ID (可选)">
+    <button class="st-btn" id="btnSave">保存</button>
+    <button class="st-btn" id="btnCloseSettings" style="margin-top:10px;background:transparent;color:#666">关闭</button>
+  </div>
+</div>
+
+<div id="debug-console" style="display:none"></div>
+
+<script type="module" src="./loader.js"></script>
+<script>
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+</script>
 </body>
 </html>
