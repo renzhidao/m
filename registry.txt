@@ -1,0 +1,14 @@
+# === P1 模块化注册表 ===
+
+# 1. 核心层
+core-state
+core-network
+
+# 2. 界面层
+ui-contact-list
+ui-header
+ui-message-list
+ui-input-box
+
+# 3. 弹窗层
+ui-settings
