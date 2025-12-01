@@ -1,59 +1,75 @@
 console.log('🔌 系统启动中...');
 
 async function boot() {
-    // 1. 读取注册表
-    const regText = await fetch('../registry.txt').then(r => r.text());
-    // 过滤空行和注释
-    const modules = regText.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
-    
-    console.log(`检测到 ${modules.length} 个功能模块`);
+    try {
+        // 【路径修复 1】相对于 index.html 读取注册表
+        const regText = await fetch('./registry.txt').then(r => {
+            if (!r.ok) throw new Error(`Registry 404 (Status: ${r.status})`);
+            return r.text();
+        });
 
-    // 2. 逐个加载
-    for (const modPath of modules) {
-        await loadModule(modPath);
+        // 解析注册表
+        const modules = regText.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+        console.log(`检测到 ${modules.length} 个模块`);
+
+        // 逐个加载
+        for (const modPath of modules) {
+            await loadModule(modPath);
+        }
+    } catch (e) {
+        console.error('Boot Failed:', e);
+        document.body.innerHTML = `<div style="padding:20px;color:red;font-family:monospace">
+            <h3>启动错误</h3>
+            <p>${e.message}</p>
+            <hr>
+            <small>提示：请使用 GitHub Pages 或本地 HTTP Server (如 Live Server) 运行，不要直接双击打开。</small>
+        </div>`;
     }
 }
 
 async function loadModule(path) {
-    const basePath = `../modules/${path}`;
-    console.log(` 加载模块: ${path}`);
+    console.log(`📦 加载模块: ${path}`);
 
-    // A. 尝试加载 UI (ui.html)
+    // 【路径修复 2】UI 路径相对于 index.html
+    const uiPath = `./modules/${path}/ui.html`;
+    
+    // 【路径修复 3】JS 路径相对于 core/loader.js
+    const logicPath = `../modules/${path}/logic.js`;
+
+    // A. 加载 UI (HTML)
     try {
-        const uiRes = await fetch(`${basePath}/ui.html`);
+        const uiRes = await fetch(uiPath);
         if (uiRes.ok) {
             const html = await uiRes.text();
-            // 创建一个临时容器来解析 HTML
             const temp = document.createElement('div');
             temp.innerHTML = html;
             
-            // 提取真正的模块根元素
+            // 提取第一个元素作为模块根
             const rootEl = temp.firstElementChild;
             if (rootEl) {
-                // 查找它想去哪个槽位 (data-target="#slot-main")
                 const targetSelector = rootEl.getAttribute('data-target') || '#hidden-stage';
                 const targetSlot = document.querySelector(targetSelector);
                 if (targetSlot) {
                     targetSlot.appendChild(rootEl);
                 } else {
-                    console.warn(`找不到槽位 ${targetSelector}，模块 ${path} 的 UI 无法显示`);
+                    console.warn(`[${path}] UI 无法挂载: 找不到槽位 ${targetSelector}`);
                 }
             }
         }
     } catch (e) {
-        // 允许没有 UI 的纯逻辑模块
+        // 允许模块没有 UI
     }
 
-    // B. 尝试加载逻辑 (logic.js)
+    // B. 加载逻辑 (JS)
     try {
-        // 动态导入 JS
-        const logic = await import(`${basePath}/logic.js`);
-        // 如果模块导出了 init 函数，就执行它
+        const logic = await import(logicPath);
         if (logic.init) logic.init();
     } catch (e) {
-        // 允许没有 JS 的纯静态模块
-        if(e.message.includes('Failed to fetch')) return; 
-        console.error(`模块 ${path} 逻辑错误:`, e);
+        // 忽略无逻辑文件的错误，但打印其他脚本错误
+        const m = e.message || '';
+        if (!m.includes('Failed to fetch') && !m.includes('404') && !m.includes('Module not found')) {
+            console.error(`[${path}] 逻辑执行错误:`, e);
+        }
     }
 }
 
