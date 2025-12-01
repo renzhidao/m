@@ -1,0 +1,14 @@
+<div id="msg-area" data-target="#slot-main" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth;">
+    <template id="tpl-msg-bubble">
+        <div class="msg-row" style="display: flex; flex-direction: column; max-width: 80%;">
+            <div class="bubble-wrap" style="display: flex; align-items: flex-end; gap: 8px;">
+                <div class="bubble" style="padding: 10px 14px; background: var(--bubble-other); color: #e5e7eb; border-radius: 16px; word-break: break-word; line-height: 1.4;">
+                    <div class="txt"></div>
+                </div>
+            </div>
+            <div class="meta" style="font-size: 10px; color: var(--sub); margin-top: 4px; margin-left: 4px;"></div>
+        </div>
+    </template>
+    
+    <div id="empty-tip" style="text-align: center; color: var(--sub); font-size: 12px; margin-top: 20px;">这里是聊天起点</div>
+</div>
