@@ -1,22 +1,25 @@
 export function init() {
     const title = document.getElementById('header-title');
     const status = document.getElementById('header-status');
-    const dot = document.getElementById('status-dot');
-    
-    // 监听状态
-    window.addEventListener('p1:status', (e) => {
-        status.innerText = e.detail;
-        dot.style.background = '#22c55e';
-        dot.style.boxShadow = '0 0 8px #22c55e';
-    });
+    const btnMenu = document.getElementById('btn-mobile-menu');
+    const sidebar = document.getElementById('slot-sidebar');
 
-    // 监听聊天切换
     window.addEventListener('p1:chat_switched', (e) => {
         title.innerText = e.detail.name;
+        status.innerText = e.detail.id === 'all' ? '全员广播' : '私密连接';
     });
+
+    // 手机端点击菜单键 -> 显示侧边栏
+    if(btnMenu) {
+        btnMenu.onclick = () => {
+            sidebar.classList.add('show');
+        };
+    }
     
-    // 触发设置
-    document.getElementById('btn-settings').onclick = () => {
-        window.dispatchEvent(new CustomEvent('p1:open_settings'));
+    // 点击遮罩层关闭侧边栏 (简单模拟)
+    sidebar.onclick = (e) => {
+        if(window.innerWidth < 768 && e.target === sidebar) {
+            sidebar.classList.remove('show');
+        }
     };
 }

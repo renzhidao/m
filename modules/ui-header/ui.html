@@ -1,11 +1,22 @@
 <header id="app-header" data-target="#slot-main" style="height: 60px; border-bottom: 1px solid var(--line); display: flex; align-items: center; padding: 0 16px; background: var(--panel); justify-content: space-between;">
-    <div>
-        <h2 id="header-title" style="font-size: 16px; margin: 0;">公共频道</h2>
-        <div style="display: flex; align-items: center; margin-top: 2px;">
-            <div id="status-dot" style="width: 8px; height: 8px; background: #666; border-radius: 50%; margin-right: 6px;"></div>
-            <span id="header-status" style="font-size: 12px; color: var(--sub);">离线</span>
+    <div style="display:flex; align-items:center">
+        <!-- 手机端返回按钮 (默认隐藏，CSS控制) -->
+        <div id="btn-mobile-menu" class="btn-icon" style="margin-right:10px; display:none">☰</div>
+        
+        <div>
+            <h2 id="header-title" style="font-size: 16px; margin: 0;">公共频道</h2>
+            <span id="header-status" style="font-size: 12px; color: var(--sub);">...</span>
         </div>
     </div>
     
-    <div class="btn-icon" id="btn-settings">⚙️</div>
+    <!-- 右侧留空，或者放其他功能 -->
+    <div style="display:flex; gap:10px">
+        <!-- 原版这里是安装按钮等，暂时留空 -->
+    </div>
+
+    <style>
+        @media (max-width: 768px) {
+            #btn-mobile-menu { display: grid !important; }
+        }
+    </style>
 </header>
