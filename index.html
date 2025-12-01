@@ -3,19 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P1 Modular V2</title>
-    <link rel="stylesheet" href="./core/theme.css">
+    <title>P1 Modular V2 (Fixed)</title>
     <style>
-        body { margin: 0; height: 100vh; display: flex; overflow: hidden; }
-        #slot-sidebar { width: 280px; border-right: 1px solid var(--line); display: flex; flex-direction: column; background: #0b0d12; }
+        /* === 强制内联 Theme.css === */
+        :root {
+          --bg: #0e0f13; --panel: #13151b; --line: #2b3040;
+          --text: #e6e6e6; --sub: #8ea0b8; --primary: #2a7cff;
+          --bubble-me: #2a7cff; --bubble-other: #1f2937; --active: #1f232e;
+        }
+        body { margin: 0; height: 100vh; display: flex; overflow: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; }
+        
+        /* 滚动条 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        
+        /* 布局槽位 */
+        #slot-sidebar { width: 280px; border-right: 1px solid var(--line); display: flex; flex-direction: column; background: #0b0d12; transition: transform 0.3s; }
         #slot-main { flex: 1; display: flex; flex-direction: column; position: relative; background: var(--bg); }
-        #hidden-stage { display: none; }
+        
+        /* 通用组件样式 */
+        .btn-icon { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; color: var(--sub); }
+        .btn-icon:hover { background: rgba(255,255,255,0.1); }
+        .btn-primary { background: var(--primary); color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         
         /* 移动端适配 */
         @media (max-width: 768px) {
-            #slot-sidebar { display: none; position: absolute; width: 100%; height: 100%; z-index: 10; }
-            #slot-sidebar.show { display: flex; }
+            #slot-sidebar { position: absolute; width: 100%; height: 100%; z-index: 10; transform: translateX(-100%); }
+            #slot-sidebar.show { transform: translateX(0); }
         }
+
+        /* === 调试面板样式 === */
+        #debug-console {
+            position: fixed; bottom: 10px; right: 10px; 
+            background: rgba(0,0,0,0.8); border: 1px solid #444; 
+            color: #0f0; font-family: monospace; font-size: 10px;
+            padding: 10px; border-radius: 8px; z-index: 9999;
+            max-width: 200px; pointer-events: none;
+        }
+        .log-item { margin-bottom: 2px; }
+        .log-err { color: #f55; }
+        .log-ok { color: #5f5; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.0/dist/peerjs.min.js"></script>
@@ -23,8 +50,10 @@
 <body>
     <div id="slot-sidebar"></div>
     <div id="slot-main"></div>
-    <!-- 弹窗层槽位 -->
     <div id="slot-modal" style="position: fixed; inset: 0; pointer-events: none; z-index: 99;"></div>
+    
+    <!-- 调试显示 -->
+    <div id="debug-console"><div>系统自检中...</div></div>
 
     <script type="module" src="./core/loader.js"></script>
 </body>
