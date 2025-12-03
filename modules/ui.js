@@ -1,31 +1,39 @@
 export function init() {
-  console.log('📦 加载模块: UI');
+  console.log('📦 加载模块: UI [v161 终极版]');
 
   window.ui = {
     init() {
-      const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+      // --- PWA 全局事件委托 (最稳健的绑定方式) ---
+      document.addEventListener('click', async (e) => {
+          // 查找点击目标是否是安装按钮 (或其子元素)
+          const btn = e.target.closest('#btn-install');
+          if (!btn) return; // 点的不是按钮，忽略
 
-      // [PWA修复] 1. 默默捕获安装资格，不干扰界面
-      window.addEventListener('beforeinstallprompt', (e) => {
-          e.preventDefault(); // 阻止浏览器自动弹横幅，改由点击触发
-          window.deferredPrompt = e;
-          console.log('✅ PWA安装资格已获取');
-      });
-
-      // [PWA修复] 2. 绑定点击事件
-      bind('btn-install', async () => {
+          console.log('📲 安装按钮被点击 (代理触发)');
           const p = window.deferredPrompt;
           if (p) {
-              p.prompt(); // 触发原生弹窗
+              p.prompt();
               const { outcome } = await p.userChoice;
               console.log(`安装结果: ${outcome}`);
-              window.deferredPrompt = null; // 用完即焚
+              if(outcome === 'accepted') window.deferredPrompt = null;
           } else {
-              // 如果没资格（比如已经安装了，或者浏览器不支持），给个提示
-              alert('⚠️ 暂未触发安装权限\n可能原因：\n1. 应用已安装\n2. 需要通过浏览器菜单"添加到主屏幕"');
+              alert('⚠️ 暂未触发安装权限\n\n可能原因：\n1. 应用已安装 (请检查桌面)\n2. 浏览器正在检测环境 (请稍后再试)\n3. 请使用 Chrome/Edge 浏览器');
           }
       });
-    
+
+      // 监听安装资格
+      window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          window.deferredPrompt = e;
+          console.log('✅ PWA 资格获取成功');
+          // 尝试显示按钮 (如果 DOM 已存在)
+          const btn = document.getElementById('btn-install');
+          if(btn) btn.style.display = 'grid';
+      });
+
+      // --- 原有逻辑 ---
+      const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+      
       bind('btnSend', () => { const el = document.getElementById('editor'); if (el && el.innerText.trim()) { window.core.sendMsg(el.innerText.trim()); el.innerText = ''; } });
       bind('btnToggleLog', () => { const el = document.getElementById('miniLog'); if (el) el.style.display = (el.style.display === 'flex') ? 'none' : 'flex'; });
       bind('btnSettings', () => { document.getElementById('settings-panel').style.display = 'grid'; document.getElementById('iptNick').value = window.state.myName; });
@@ -36,32 +44,6 @@ export function init() {
         document.getElementById('settings-panel').style.display = 'none';
       });
 
-      
-    
-      
-      
-      // [修复] 捕获安装事件，但不阻止浏览器默认弹窗
-      window.addEventListener('beforeinstallprompt', (e) => {
-          window.deferredPrompt = e;
-          console.log('📲 PWA安装事件已捕获 (未拦截)');
-      });
-      
-      // [修复] 如果页面上还有其他 id="btn-install" 的元素，尝试绑定它
-      setTimeout(() => {
-          const legacyBtn = document.getElementById('btn-install');
-          if(legacyBtn) {
-              legacyBtn.onclick = async () => {
-                  if(window.deferredPrompt) {
-                      window.deferredPrompt.prompt();
-                      window.deferredPrompt = null;
-                  } else {
-                      alert('暂未触发安装权限，请通过浏览器菜单安装');
-                  }
-              };
-          }
-      }, 1000);
-    
-      
       bind('btnFile', () => document.getElementById('fileInput').click());
       const fi = document.getElementById('fileInput');
       if (fi) fi.onchange = async (e) => {
@@ -81,14 +63,17 @@ export function init() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href=url; a.download='log.txt'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
       });
+      
       const box = document.getElementById('msgList'); if (box) box.addEventListener('scroll', () => { if (box.scrollTop===0) window.core.loadHistory(20); });
       const contactListEl = document.getElementById('contactList');
       if (contactListEl) { contactListEl.addEventListener('click', e => { const item = e.target.closest('.contact-item'); if (item) window.ui.switchChat(item.getAttribute('data-chat-id'), item.getAttribute('data-chat-name')||''); }); }
+      
       this.updateSelf(); this.renderList();
     },
+
     updateSelf() {
-      document.getElementById('myId').innerText = window.state.myId.slice(0,6);
-      document.getElementById('myNick').innerText = window.state.myName;
+      const elMyId = document.getElementById('myId'); if(elMyId) elMyId.innerText = window.state.myId.slice(0,6);
+      const elMyNick = document.getElementById('myNick'); if(elMyNick) elMyNick.innerText = window.state.myName;
       const st = document.getElementById('statusText');
       if(st) { 
           let s = '在线'; 
@@ -97,15 +82,18 @@ export function init() {
           else if(window.state.mqttStatus === '失败') s += '(M离)';
           st.innerText = s; 
       }
-      document.getElementById('statusDot').className = window.state.mqttStatus === '在线' ? 'dot online' : 'dot';
+      const dot = document.getElementById('statusDot'); if(dot) dot.className = window.state.mqttStatus === '在线' ? 'dot online' : 'dot';
     },
+
     switchChat(id, name) {
       window.state.activeChat = id; window.state.activeChatName = name; window.state.unread[id]=0; localStorage.setItem('p1_unread', JSON.stringify(window.state.unread)); window.state.oldestTs = Infinity;
-      document.getElementById('chatTitle').innerText = name;
-      document.getElementById('chatStatus').innerText = (id==='all')?'全员':'私聊';
+      const title = document.getElementById('chatTitle'); if(title) title.innerText = name;
+      const status = document.getElementById('chatStatus'); if(status) status.innerText = (id==='all')?'全员':'私聊';
       if(window.innerWidth<768) document.getElementById('sidebar').classList.add('hidden');
+      window.dispatchEvent(new CustomEvent('p1:chat_switched', { detail: { id, name } }));
       this.clearMsgs(); window.core.loadHistory(50); this.renderList();
     },
+
     renderList() {
       const list = document.getElementById('contactList'); if(!list) return;
       const pubUnread = window.state.unread['all'] || 0;
@@ -126,12 +114,10 @@ export function init() {
     appendMsg(m) {
       const box = document.getElementById('msgList'); if(!box||!m) return; if(document.getElementById('msg-'+m.id)) return;
       const isMe = m.senderId === window.state.myId;
-      
       let content = window.util.escape(m.txt);
       if (m.kind === 'image') {
           content = `<img src="${m.txt}" class="chat-img" onclick="window.open(this.src)">`;
       }
-      
       const html = `<div class="msg-row ${isMe?'me':'other'}" id="msg-${m.id}"><div><div class="msg-bubble" style="${m.kind==='image'?'background:transparent;padding:0':''}">${content}</div><div class="msg-meta">${isMe?'我':window.util.escape(m.n)} ${new Date(m.ts).toLocaleTimeString()}</div></div></div>`;
       box.insertAdjacentHTML('beforeend', html); box.scrollTop = box.scrollHeight;
     }
