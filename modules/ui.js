@@ -4,6 +4,28 @@ export function init() {
   window.ui = {
     init() {
       const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+
+      // [PWA修复] 1. 默默捕获安装资格，不干扰界面
+      window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault(); // 阻止浏览器自动弹横幅，改由点击触发
+          window.deferredPrompt = e;
+          console.log('✅ PWA安装资格已获取');
+      });
+
+      // [PWA修复] 2. 绑定点击事件
+      bind('btn-install', async () => {
+          const p = window.deferredPrompt;
+          if (p) {
+              p.prompt(); // 触发原生弹窗
+              const { outcome } = await p.userChoice;
+              console.log(`安装结果: ${outcome}`);
+              window.deferredPrompt = null; // 用完即焚
+          } else {
+              // 如果没资格（比如已经安装了，或者浏览器不支持），给个提示
+              alert('⚠️ 暂未触发安装权限\n可能原因：\n1. 应用已安装\n2. 需要通过浏览器菜单"添加到主屏幕"');
+          }
+      });
+    
       bind('btnSend', () => { const el = document.getElementById('editor'); if (el && el.innerText.trim()) { window.core.sendMsg(el.innerText.trim()); el.innerText = ''; } });
       bind('btnToggleLog', () => { const el = document.getElementById('miniLog'); if (el) el.style.display = (el.style.display === 'flex') ? 'none' : 'flex'; });
       bind('btnSettings', () => { document.getElementById('settings-panel').style.display = 'grid'; document.getElementById('iptNick').value = window.state.myName; });
@@ -13,8 +35,32 @@ export function init() {
         if (n) { window.state.myName = n; localStorage.setItem('nickname', n); window.ui.updateSelf(); }
         document.getElementById('settings-panel').style.display = 'none';
       });
+
       
-      // 简化的安装逻辑（原版依赖 deferredPrompt，这里暂略，核心不动）
+    
+      
+      
+      // [修复] 捕获安装事件，但不阻止浏览器默认弹窗
+      window.addEventListener('beforeinstallprompt', (e) => {
+          window.deferredPrompt = e;
+          console.log('📲 PWA安装事件已捕获 (未拦截)');
+      });
+      
+      // [修复] 如果页面上还有其他 id="btn-install" 的元素，尝试绑定它
+      setTimeout(() => {
+          const legacyBtn = document.getElementById('btn-install');
+          if(legacyBtn) {
+              legacyBtn.onclick = async () => {
+                  if(window.deferredPrompt) {
+                      window.deferredPrompt.prompt();
+                      window.deferredPrompt = null;
+                  } else {
+                      alert('暂未触发安装权限，请通过浏览器菜单安装');
+                  }
+              };
+          }
+      }, 1000);
+    
       
       bind('btnFile', () => document.getElementById('fileInput').click());
       const fi = document.getElementById('fileInput');

@@ -28,13 +28,13 @@ export function init() {
           div.style.color = '#ffff44';
       }
 
-      el.appendChild(div); // 改为 appendChild，符合阅读习惯
+      el.prepend(div); // 改为 appendChild，符合阅读习惯
       
       // 容量扩充到 500 条
       if (el.children.length > 500) el.removeChild(el.firstChild);
       
       // 自动滚动到底部
-      el.scrollTop = el.scrollHeight;
+      el.scrollTop = 0;
     }
   };
 
