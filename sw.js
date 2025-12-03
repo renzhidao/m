@@ -1,12 +1,12 @@
-// 🔴 强制升级版本号: v162 (Single File Fix)
-const CACHE_NAME = 'p1-v162-single-file';
+// 🔴 强制升级版本号: v163 (Rollback Stable)
+const CACHE_NAME = 'p1-v163-rollback';
 
 const CORE_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './registry.txt',
-  './modules/network/logic.js', // 现在只需要这一个文件
+  './modules/network/logic.js',
   './modules/ui.js',
   './modules/utils.js'
 ];
