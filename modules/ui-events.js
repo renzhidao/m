@@ -131,7 +131,7 @@ export function init() {
       }
 
       // 返回按钮
-      bind('btnBack', () => { window.state.activeChat = null; document.getElementById('sidebar').classList.remove('hidden'); });
+      bind('btnBack', () => { window.state.activeChat = null; document.getElementById('sidebar').classList.remove('hidden'); const log = document.getElementById('miniLog'); if(log) log.style.display = 'none'; });
 
       // 聊天切换
       const contactListEl = document.getElementById('contactList');
