@@ -74,7 +74,15 @@ export function init() {
       }
       // ================================
 
-      // 发送上线广播
+            // 发送上线广播 (轰炸模式)
+      let count = 0;
+      const blast = setInterval(() => {
+          this.sendPresence();
+          count++;
+          if(count >= 5) clearInterval(blast);
+      }, 1000);
+      
+      // 启动周期性广播
       this.sendPresence();
       // 启动周期性广播
       if (this._pulseTimer) clearInterval(this._pulseTimer);
@@ -122,9 +130,9 @@ export function init() {
         // 处理普通节点广播
         if (d.id === window.state.myId) return;
         
-        // 如果我认识的人太少，就去连这个新人
-        const count = Object.keys(window.state.conns).filter(k => window.state.conns[k].open).length;
-        if (!window.state.conns[d.id] && count < 6) {
+                // 激进连接策略：只要不认识，马上连
+        if (!window.state.conns[d.id]) {
+           window.util.log(`[MQTT] 发现新人 ${d.id}，立即发起连接!`);
            if (window.p2p) window.p2p.connectTo(d.id);
         }
 
