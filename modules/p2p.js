@@ -66,24 +66,17 @@ export function init() {
            
            if (window.state._retryCount < 3) {
                window.state._retryCount++;
-                              window.util.log(`🔄 尝试自动重启 P2P (${window.state._retryCount}/3)...`);
+               window.util.log(`🔄 尝试自动重启 P2P (${window.state._retryCount}/3)...`);
                if (window.state.peer) {
                    try { window.state.peer.destroy(); } catch(e){}
                    window.state.peer = null;
                }
                setTimeout(() => { 
                    this.start(); 
-               }, 1000);/3)...`);
-               setTimeout(() => { 
-                   window.state.peer = null; 
-                   this.start(); 
                }, 1000);
            } else {
-                           } else {
                window.util.log('❌ 自动恢复无效，停止操作。');
                window.util.log('⚠️ 请手动关闭此标签页并重新打开以恢复连接。');
-               // 不再自动 reload，防止死循环
-               // setTimeout(() => location.reload(), 500);
            }
            return;
           }
