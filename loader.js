@@ -1,15 +1,25 @@
 const debugBox = document.getElementById('debug-console');
 function log(msg, type='ok') {
     if(debugBox) {
-        // 简单的调试输出，可选开启
         // console.log(msg);
     }
 }
 
-// 内置备用表
 const FALLBACK_MODULES = ["utils", "state", "db", "network", "ui"];
 
 async function boot() {
+    // 1. 优先加载配置
+    try {
+        const cfg = await fetch('./config.json').then(r => r.json());
+        window.config = cfg;
+        console.log('✅ 配置文件已加载');
+    } catch(e) {
+        console.error('❌ 无法加载 config.json', e);
+        alert('致命错误: 配置文件丢失');
+        return;
+    }
+
+    // 2. 获取模块列表
     let modules = [];
     try {
         const res = await fetch('./registry.txt');
@@ -24,10 +34,8 @@ async function boot() {
         modules = FALLBACK_MODULES;
     }
 
-    // 逐个加载
+    // 3. 逐个加载模块
     for (const mod of modules) {
-        // 因为这次是纯 JS 拆分，我们只加载 logic.js
-        // 并且不依赖 data-target，因为 HTML 已经在 index.html 里了
         const path = `./modules/${mod}.js`;
         try {
             const m = await import(path);
@@ -38,7 +46,7 @@ async function boot() {
         }
     }
     
-    // 所有模块加载完毕，启动核心逻辑
+    // 4. 启动核心
     setTimeout(() => {
         if(window.core && window.core.init) {
             console.log('🚀 System Booting...');
