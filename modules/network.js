@@ -24,7 +24,7 @@ export function init() {
                if (window.state.mqttStatus === '在线') this.patrolHubs();
                else this.connectToAnyHub();
           }
-      }, 2000); // 启动检查从5s缩短到2s
+      }, 2000);
 
       setInterval(() => {
         this.cleanup();
@@ -60,27 +60,42 @@ export function init() {
     startMainPeer() {
       if (window.state.peer && !window.state.peer.destroyed) return;
       window.util.log(`启动 P2P...`);
-      const p = new Peer(window.state.myId, CFG.peer);
-      p.on('open', id => {
-        window.state.myId = id; window.state.peer = p;
-        this._searchLogShown = false;
-        window.util.log(`✅ 就绪: ${id.slice(0,6)}`);
-        if (window.ui) window.ui.updateSelf();
-        for(let i=0; i<HUB_COUNT; i++) this.connectTo(HUB_PREFIX + i);
-      });
-      p.on('connection', conn => this.setupConn(conn));
-      p.on('error', e => { 
-          if (e.type === 'peer-unavailable') return; 
-          if (e.type === 'disconnected') {
-              if (!this._searchLogShown) {
-                  window.util.log(' 寻找节点中...');
-                  this._searchLogShown = true;
+      
+      // 尝试捕获同步错误
+      try {
+          const p = new Peer(window.state.myId, CFG.peer);
+          
+          p.on('open', id => {
+            window.state.myId = id; window.state.peer = p;
+            this._searchLogShown = false;
+            window.util.log(`✅ 就绪: ${id.slice(0,6)}`);
+            if (window.ui) window.ui.updateSelf();
+            for(let i=0; i<HUB_COUNT; i++) this.connectTo(HUB_PREFIX + i);
+          });
+          p.on('connection', conn => this.setupConn(conn));
+          p.on('error', e => { 
+              if (e.type === 'peer-unavailable') return; 
+              
+              // 致命错误处理
+              if (e.type === 'browser-incompatible') {
+                  window.util.log('❌ 您的浏览器不支持 WebRTC，无法通信！请更换 Chrome/Firefox。');
+                  alert('您的浏览器不支持 P2P 通信 (WebRTC)。\n请更换 Chrome、Firefox 或最新版 Edge。');
+                  return;
               }
-              return;
-          }
-          window.util.log(`PeerErr: ${e.type}`); 
-          if(e.type === 'network' || e.type === 'server-error') setTimeout(() => this.startMainPeer(), 5000);
-      });
+
+              if (e.type === 'disconnected') {
+                  if (!this._searchLogShown) {
+                      window.util.log('📡 寻找节点中...');
+                      this._searchLogShown = true;
+                  }
+                  return;
+              }
+              window.util.log(`PeerErr: ${e.type}`); 
+              if(e.type === 'network' || e.type === 'server-error') setTimeout(() => this.startMainPeer(), 5000);
+          });
+      } catch(err) {
+          window.util.log('❌ P2P 初始化崩溃: ' + err.message);
+      }
     },
 
     startMqtt() {
@@ -246,10 +261,8 @@ export function init() {
         const list = Object.keys(window.state.conns); list.push(window.state.myId);
         conn.send({t: 'HELLO', n: window.state.myName, id: window.state.myId});
         
-        // 新增：连接建立后，请求最近缺失的公共消息
         window.db.getRecent(1, 'all').then(m => {
             const lastTs = (m && m.length) ? m[0].ts : 0;
-            // 延时一下，确保对方准备好
             setTimeout(() => {
                 if(conn.open) conn.send({t: 'ASK_PUB', ts: lastTs});
             }, 500);
@@ -265,7 +278,6 @@ export function init() {
         delete window.state.conns[peerId]; 
         if (window.ui) window.ui.renderList();
         if (!peerId.startsWith(CFG.hub.prefix)) {
-            // 极速模式：200毫秒后重连
             setTimeout(() => this.connectTo(peerId), 200);
         }
       };
@@ -292,15 +304,11 @@ export function init() {
           });
           return;
       }
-      
-      // 新增：处理历史记录请求
       if (d.t === 'ASK_PUB') {
-          // 对方请求 d.ts 之后的公共消息
           const list = await window.db.getPublicAfter(d.ts || 0);
           if (list.length > 0) conn.send({t: 'REP_PUB', list: list});
           return;
       }
-      // 新增：接收历史记录回复
       if (d.t === 'REP_PUB' && Array.isArray(d.list)) {
           d.list.forEach(m => {
               if (!window.state.seenMsgs.has(m.id)) {
@@ -365,7 +373,6 @@ export function init() {
       Object.values(window.state.conns).forEach(c => { 
           if (c.open) {
               c.send({t: 'PING'});
-              // 极速模式：5秒无响应判定离线
               if (c.lastPong && (now - c.lastPong > 5000)) {
                   if (now - (c.created || 0) < CFG.params.conn_timeout) return; 
                   if (c.peer.startsWith(CFG.hub.prefix)) return;    
