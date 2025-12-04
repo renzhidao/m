@@ -22,7 +22,7 @@ export function init() {
       
       if (elSt) {
         let s = '在线';
-        if (window.state.isHub) s = '👑网关';
+        if (window.state.isHub) s = '网关';
         if (window.state.mqttStatus === '在线') s += '+MQTT';
         else if (window.state.mqttStatus === '失败') s += '(M离)';
         elSt.innerText = s;
@@ -35,17 +35,20 @@ export function init() {
       // 计算真实在线人数（不包括自己）
       if (elCount) {
          let count = 0;
+         // 只统计 open 的连接
          Object.values(window.state.conns).forEach(c => { if(c.open) count++; });
          elCount.innerText = count;
       }
     },
 
+    // === 修正：只显示当前连接的在线节点 ===
     renderList() {
       const list = document.getElementById('contactList');
       if (!list) return;
 
       const pubUnread = window.state.unread[CHAT.PUBLIC_ID] || 0;
       
+      // 1. 固定显示公共频道
       let html = `
         <div class="contact-item ${window.state.activeChat === CHAT.PUBLIC_ID ? 'active' : ''}" 
              data-chat-id="${CHAT.PUBLIC_ID}" data-chat-name="${CHAT.PUBLIC_NAME}">
@@ -57,32 +60,26 @@ export function init() {
           </div>
         </div>`;
 
-      const map = new Map();
-      // 合并联系人列表和当前连接列表
-      Object.values(window.state.contacts).forEach(c => map.set(c.id, c));
-      Object.keys(window.state.conns).forEach(k => {
-         if (k !== window.state.myId) {
-            const existing = map.get(k) || {};
-            map.set(k, { ...existing, id: k, n: window.state.conns[k].label || k.slice(0, 6) });
-         }
-      });
+      // 2. 遍历当前连接 (window.state.conns)
+      Object.keys(window.state.conns).forEach(id => {
+        const conn = window.state.conns[id];
+        // 过滤条件：必须是 Open 状态，不是自己，且不是房主ID（p1-hub-...）
+        if (!conn || !conn.open) return;
+        if (id === window.state.myId) return;
+        if (id.startsWith(window.config.hub.prefix)) return;
 
-      map.forEach((v, id) => {
-        // 不显示房主节点
-        if (!id || id === window.state.myId || id.startsWith(window.config.hub.prefix)) return;
-        
-        const isOnline = window.state.conns[id] && window.state.conns[id].open;
         const unread = window.state.unread[id] || 0;
-        const safeName = window.util.escape(v.n || id.slice(0, 6));
-        const bg = isOnline ? UI_CONFIG.COLOR_ONLINE : window.util.colorHash(id);
+        const safeName = window.util.escape(conn.label || id.slice(0, 6));
+        // 在线统一用绿色，或者用头像哈希色
+        const bg = UI_CONFIG.COLOR_ONLINE; 
 
         html += `
           <div class="contact-item ${window.state.activeChat === id ? 'active' : ''}" 
                data-chat-id="${id}" data-chat-name="${safeName}">
-            <div class="avatar" style="background:${bg}">${safeName[0]}</div>
+            <div class="avatar" style="background:${window.util.colorHash(id)}">${safeName[0]}</div>
             <div class="c-info">
               <div class="c-name">${safeName} ${unread > 0 ? `<span class="unread-badge">${unread}</span>` : ''}</div>
-              <div class="c-time">${isOnline ? '在线' : '离线'}</div>
+              <div class="c-time">在线</div>
             </div>
           </div>`;
       });
@@ -103,13 +100,9 @@ export function init() {
       const isMe = m.senderId === window.state.myId;
       let content = '';
 
-      // === 内容渲染逻辑 ===
       if (m.kind === CHAT.KIND_IMAGE) {
-         // 图片
          content = `<img src="${m.txt}" class="chat-img" onclick="window.open(this.src)">`;
       } else if (m.kind === CHAT.KIND_FILE) {
-         // === 文件下载卡片 (新功能) ===
-         // m.txt 里存的是 Base64 数据
          const sizeStr = m.fileSize ? (m.fileSize / 1024).toFixed(1) + 'KB' : '未知大小';
          content = `
            <div class="file-card">
@@ -122,7 +115,6 @@ export function init() {
            </div>
          `;
       } else {
-         // 纯文本
          content = window.util.escape(m.txt);
       }
 
@@ -139,13 +131,11 @@ export function init() {
       box.insertAdjacentHTML('beforeend', html);
       box.scrollTop = box.scrollHeight;
       
-      // 重新绑定长按事件 (为了新消息)
       if (window.uiEvents && window.uiEvents.bindMsgEvents) {
          window.uiEvents.bindMsgEvents();
       }
     }
   };
 
-  // 合并到 window.ui
   Object.assign(window.ui, render);
 }
