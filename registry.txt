@@ -1,5 +1,10 @@
+constants
 utils
 state
 db
-network
-ui
+protocol
+p2p
+mqtt
+hub
+ui-render
+ui-events

@@ -5,7 +5,8 @@ function log(msg, type='ok') {
     }
 }
 
-const FALLBACK_MODULES = ["utils", "state", "db", "network", "ui"];
+// 新的模块列表 (Fallback)
+const FALLBACK_MODULES = ["constants", "utils", "state", "db", "protocol", "p2p", "mqtt", "hub", "ui-render", "ui-events"];
 
 async function boot() {
     // 1. 优先加载配置
@@ -38,19 +39,24 @@ async function boot() {
     for (const mod of modules) {
         const path = `./modules/${mod}.js`;
         try {
-            const m = await import(path);
-            if(m.init) m.init();
+            await import(path);
+            // 大部分新模块不导出 init，而是在 import 时直接挂载到 window 或由 app.js 统一调用
+            // 但为了兼容性，如果有 init 还是执行一下
+            // 注意：我们的设计是 app.js 统筹，所以这里主要负责把代码 load 进来
             console.log(`✅ Module loaded: ${mod}`);
         } catch(e) {
             console.error(`❌ Module failed: ${mod}`, e);
         }
     }
     
-    // 4. 启动核心
-    setTimeout(() => {
-        if(window.core && window.core.init) {
-            console.log('🚀 System Booting...');
-            window.core.init();
+    // 4. 启动新核心 (app.js)
+    setTimeout(async () => {
+        try {
+            const main = await import('./app.js');
+            if(main.init) main.init();
+            console.log('🚀 System Booting (Refactored)...');
+        } catch(e) {
+            console.error('Failed to load app.js', e);
         }
     }, 500);
 }
