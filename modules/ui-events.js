@@ -44,6 +44,24 @@ export function init() {
         if (el) el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
       });
 
+      // === 修复：补回下载日志功能 ===
+      bind('btnDlLog', () => {
+        const el = document.getElementById('logContent'); 
+        if(!el) return;
+        // 提取纯文本日志
+        const text = Array.from(el.children).map(n => n.innerText).join('\n');
+        const blob = new Blob([text], {type: 'text/plain'});
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a'); 
+        a.href = url; 
+        a.download = `p1_log_${Date.now()}.txt`; 
+        document.body.appendChild(a); 
+        a.click(); 
+        document.body.removeChild(a); 
+        URL.revokeObjectURL(url);
+      });
+
       // 设置面板
       bind('btnSettings', () => {
         document.getElementById('settings-panel').style.display = 'grid';
@@ -130,24 +148,18 @@ export function init() {
       }
     },
 
-    // === 修正：长按全选且不阻止系统菜单 ===
     bindMsgEvents() {
       document.querySelectorAll('.msg-bubble').forEach(el => {
          if (el.dataset.bound) return; 
          el.dataset.bound = 'true';
 
          el.addEventListener('contextmenu', (e) => {
-            // 修正：移除 preventDefault，允许系统菜单弹出
-            // e.preventDefault(); 
-            
-            // 执行编程全选
+            // 允许系统菜单弹出
             const selection = window.getSelection();
             const range = document.createRange();
             range.selectNodeContents(el);
             selection.removeAllRanges();
             selection.addRange(range);
-            
-            // 不干扰系统行为，用户现在可以看到“复制”按钮了
          });
       });
     }
