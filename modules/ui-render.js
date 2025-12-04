@@ -35,7 +35,7 @@ export function init() {
       // 计算真实在线人数（不包括自己）
       if (elCount) {
          let count = 0;
-         Object.values(window.state.conns).forEach(c => { if(c.open) count++; });
+         Object.values(window.state.conns).forEach(c => { if(c.open && !c.peer.startsWith(window.config.hub.prefix)) count++; });
          elCount.innerText = count;
       }
     },

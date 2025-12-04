@@ -106,7 +106,7 @@ export function init() {
 
         // 触发UI更新和重试队列
         if (window.protocol) window.protocol.retryPending();
-        if (window.ui) window.ui.renderList();
+        if (window.ui) { window.ui.renderList(); window.ui.updateSelf(); }
       });
 
       conn.on('data', d => this.handleData(d, conn));
@@ -114,7 +114,7 @@ export function init() {
       const onGone = () => {
         const pid = conn.peer;
         delete window.state.conns[pid];
-        if (window.ui) window.ui.renderList();
+        if (window.ui) { window.ui.renderList(); window.ui.updateSelf(); }
       };
       conn.on('close', onGone);
       conn.on('error', onGone);
@@ -207,7 +207,7 @@ export function init() {
          });
       }
       
-      if (window.ui) window.ui.renderList();
+      if (window.ui) { window.ui.renderList(); window.ui.updateSelf(); }
     }
   };
 }
