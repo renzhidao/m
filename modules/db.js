@@ -42,6 +42,24 @@ export function init() {
         };
       });
     },
+    // 新增：查询指定时间之后的公共消息（用于同步）
+    async getPublicAfter(ts, limit=50) {
+      if (!this._db) return [];
+      return new Promise(r => {
+        const tx = this._db.transaction(['msgs'], 'readonly');
+        // true 表示开区间，即 > ts (不包含 ts 本身)
+        const range = IDBKeyRange.lowerBound(ts, true);
+        const req = tx.objectStore('msgs').index('ts').openCursor(range); // 默认顺序是升序
+        const res = [];
+        req.onsuccess = e => {
+          const c = e.target.result;
+          if (c && res.length < limit) {
+            if (c.value.target === 'all') res.push(c.value);
+            c.continue();
+          } else r(res);
+        };
+      });
+    },
     async addPending(msg) {
       if (!this._db) return;
       const tx = this._db.transaction(['pending'], 'readwrite');

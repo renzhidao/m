@@ -23,8 +23,8 @@
   "params": {
     "ttl": 16,
     "gossip_size": 20,
-    "loop_interval": 3000,
-    "conn_timeout": 10000,
-    "ping_timeout": 30000
+    "loop_interval": 1000,
+    "conn_timeout": 5000,
+    "ping_timeout": 6000
   }
 }

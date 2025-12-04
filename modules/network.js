@@ -24,7 +24,7 @@ export function init() {
                if (window.state.mqttStatus === '在线') this.patrolHubs();
                else this.connectToAnyHub();
           }
-      }, 5000);
+      }, 2000); // 启动检查从5s缩短到2s
 
       setInterval(() => {
         this.cleanup();
@@ -245,6 +245,16 @@ export function init() {
         window.util.log(`🔗 连接成功: ${conn.peer.slice(0,6)}`);
         const list = Object.keys(window.state.conns); list.push(window.state.myId);
         conn.send({t: 'HELLO', n: window.state.myName, id: window.state.myId});
+        
+        // 新增：连接建立后，请求最近缺失的公共消息
+        window.db.getRecent(1, 'all').then(m => {
+            const lastTs = (m && m.length) ? m[0].ts : 0;
+            // 延时一下，确保对方准备好
+            setTimeout(() => {
+                if(conn.open) conn.send({t: 'ASK_PUB', ts: lastTs});
+            }, 500);
+        });
+
         setTimeout(() => { if(conn.open) conn.send({t: 'PEER_EX', list: list}); }, 100);
         this.exchange(); this.retryPending();
         if (window.ui) window.ui.renderList();
@@ -255,7 +265,8 @@ export function init() {
         delete window.state.conns[peerId]; 
         if (window.ui) window.ui.renderList();
         if (!peerId.startsWith(CFG.hub.prefix)) {
-            setTimeout(() => this.connectTo(peerId), 2000);
+            // 极速模式：200毫秒后重连
+            setTimeout(() => this.connectTo(peerId), 200);
         }
       };
       conn.on('close', onGone); conn.on('error', onGone);
@@ -281,6 +292,28 @@ export function init() {
           });
           return;
       }
+      
+      // 新增：处理历史记录请求
+      if (d.t === 'ASK_PUB') {
+          // 对方请求 d.ts 之后的公共消息
+          const list = await window.db.getPublicAfter(d.ts || 0);
+          if (list.length > 0) conn.send({t: 'REP_PUB', list: list});
+          return;
+      }
+      // 新增：接收历史记录回复
+      if (d.t === 'REP_PUB' && Array.isArray(d.list)) {
+          d.list.forEach(m => {
+              if (!window.state.seenMsgs.has(m.id)) {
+                  window.state.seenMsgs.add(m.id);
+                  window.db.saveMsg(m);
+                  if (window.state.activeChat === 'all') window.ui.appendMsg(m);
+                  else window.state.unread['all'] = (window.state.unread['all']||0)+1;
+              }
+          });
+          if (window.ui) window.ui.renderList();
+          return;
+      }
+
       if (d.t === 'MSG') {
         if (!d.id || window.state.seenMsgs.has(d.id)) return;
         window.state.seenMsgs.add(d.id);
@@ -332,7 +365,8 @@ export function init() {
       Object.values(window.state.conns).forEach(c => { 
           if (c.open) {
               c.send({t: 'PING'});
-              if (c.lastPong && (now - c.lastPong > 15000)) {
+              // 极速模式：5秒无响应判定离线
+              if (c.lastPong && (now - c.lastPong > 5000)) {
                   if (now - (c.created || 0) < CFG.params.conn_timeout) return; 
                   if (c.peer.startsWith(CFG.hub.prefix)) return;    
                   
