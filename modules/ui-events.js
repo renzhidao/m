@@ -43,6 +43,26 @@ export function init() {
         const el = document.getElementById('miniLog');
         if (el) el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
       });
+      
+      // 下载日志 (修复)
+      bind('btnDlLog', () => {
+        const el = document.getElementById('logContent');
+        if (!el) return;
+        const text = Array.from(el.children)
+          .map(div => div.innerText)
+          .reverse() // 因为日志是 prepend 的，导出时按时间正序更好看，或者保持倒序，这里保持倒序
+          .join('\n');
+          
+        const blob = new Blob([text], {type: 'text/plain'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = \`p1_log_\${new Date().toISOString().slice(0,19).replace(/T/g,'_').replace(/:/g,'-')}.txt\`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
 
       // 设置面板
       bind('btnSettings', () => {
@@ -75,7 +95,7 @@ export function init() {
             window.protocol.sendMsg(b64, CHAT.KIND_IMAGE);
           } else {
             // 处理通用文件
-            window.util.log(`准备发送文件: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
+            window.util.log(\`准备发送文件: \${file.name} (\${(file.size/1024).toFixed(1)}KB)\`);
             
             if (file.size > 5 * 1024 * 1024) {
                alert('文件过大，建议小于 5MB');
