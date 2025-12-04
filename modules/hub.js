@@ -23,7 +23,7 @@ export function init() {
       const idx = Math.floor(Math.random() * NET_PARAMS.HUB_COUNT);
       const targetId = NET_PARAMS.HUB_PREFIX + idx;
 
-      window.util.log(\`🔍 寻找房主 #\${idx}...\`);
+      window.util.log('🔍 寻找房主 #' + idx + '...');
       if (window.p2p) window.p2p.connectTo(targetId);
 
       // 如果一段时间后既没连上该房主，自己也没变成房主，则尝试篡位
@@ -40,7 +40,7 @@ export function init() {
         
         const conn = window.state.conns[targetId];
         if (!conn || !conn.open) {
-          window.util.log(\`⚓ 无法连接，尝试建立据点 #\${idx}\`);
+          window.util.log('⚓ 无法连接，尝试建立据点 #' + idx);
           this.becomeHub(idx);
         }
       }, 2500);
@@ -68,7 +68,7 @@ export function init() {
         window.state.hubHeartbeats[index] = Date.now();
         
         if (window.ui) window.ui.updateSelf();
-        window.util.log(\`👑 据点建立成功 #\${index}\`);
+        window.util.log('👑 据点建立成功 #' + index);
       });
 
       p.on('connection', conn => {
