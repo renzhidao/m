@@ -46,13 +46,13 @@ export function init() {
       const logEl = document.getElementById('logContent');
       if (logEl) {
           logEl.addEventListener('contextmenu', (e) => {
-              e.preventDefault();
+              // e.preventDefault(); // 允许系统菜单弹出
               const selection = window.getSelection();
               const range = document.createRange();
               range.selectNodeContents(logEl);
               selection.removeAllRanges();
               selection.addRange(range);
-              window.util.log('📋 日志已全选');
+              // window.util.log('📋 日志已全选');
           });
       }
       
@@ -170,7 +170,7 @@ export function init() {
 
          el.addEventListener('contextmenu', (e) => {
             // 修正：移除 preventDefault，允许系统菜单弹出
-            // e.preventDefault(); 
+            // // e.preventDefault(); // 允许系统菜单弹出 
             
             // 执行编程全选
             const selection = window.getSelection();
