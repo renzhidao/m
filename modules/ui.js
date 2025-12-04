@@ -65,16 +65,26 @@ export function init() {
       const pubUnread = window.state.unread['all'] || 0;
       let html = `<div class="contact-item ${window.state.activeChat==='all'?'active':''}" data-chat-id="all" data-chat-name="公共频道"><div class="avatar" style="background:#2a7cff">群</div><div class="c-info"><div class="c-name">公共频道 ${pubUnread>0?`<span class="unread-badge">${pubUnread}</span>`:''}</div></div></div>`;
       const map = new Map(); Object.values(window.state.contacts).forEach(c => map.set(c.id, c)); Object.keys(window.state.conns).forEach(k => { if(k!==window.state.myId) map.set(k, {id:k, n:window.state.conns[k].label||k.slice(0,6)}); });
+      
+      let onlineCounter = 0; // 新增计数器
+
       map.forEach((v, id) => {
           const HUB_PREFIX = 'p1-hub-v3-';
           if (!id || id === window.state.myId || id.startsWith(HUB_PREFIX)) return;
           const isOnline = window.state.conns[id] && window.state.conns[id].open;
+          
+          if (isOnline) onlineCounter++; // 统计在线
+
           const unread = window.state.unread[id] || 0;
           const safeName = window.util.escape(v.n || id.slice(0,6));
           const bg = isOnline ? '#22c55e' : window.util.colorHash(id);
           html += `<div class="contact-item ${window.state.activeChat===id?'active':''}" data-chat-id="${id}" data-chat-name="${safeName}"><div class="avatar" style="background:${bg}">${safeName[0]}</div><div class="c-info"><div class="c-name">${safeName} ${unread>0?`<span class="unread-badge">${unread}</span>`:''}</div><div class="c-time">${isOnline?'在线':'离线'}</div></div></div>`;
       });
       list.innerHTML = html;
+      
+      // 更新顶部在线人数显示
+      const countEl = document.getElementById('onlineCount');
+      if (countEl) countEl.innerText = onlineCounter;
     },
     clearMsgs() { const b = document.getElementById('msgList'); if(b) b.innerHTML=''; },
     appendMsg(m) {

@@ -1,12 +1,13 @@
 export function init() {
   console.log('📦 加载模块: Network (Configurable & Optimized)');
 
-  // 快捷引用配置，不再硬编码
   const CFG = window.config;
   const HUB_PREFIX = CFG.hub.prefix;
   const HUB_COUNT = CFG.hub.count;
 
   window.core = {
+    _searchLogShown: false,
+
     async init() {
       await window.util.syncTime();
       if (typeof Peer === 'undefined') { window.util.log("❌ PeerJS 未加载"); return; }
@@ -18,13 +19,12 @@ export function init() {
       this.startMainPeer();
       this.startMqtt();
 
-      // 启动后快速检查一次连接
       setTimeout(() => {
           if (!window.state.isHub && Object.keys(window.state.conns).length < 1) {
                if (window.state.mqttStatus === '在线') this.patrolHubs();
                else this.connectToAnyHub();
           }
-      }, 5000); // 缩短到5秒
+      }, 5000);
 
       setInterval(() => {
         this.cleanup();
@@ -33,8 +33,6 @@ export function init() {
         this.exchange();
         
         const now = Date.now();
-
-        // Hub 发送心跳
         if (window.state.isHub) {
             if (window.state.mqttClient && window.state.mqttClient.isConnected()) {
                 const payload = JSON.stringify({ type: 'HUB_PULSE', id: window.state.myId, hubIndex: window.state.hubIndex, ts: now });
@@ -43,8 +41,6 @@ export function init() {
                 window.state.mqttClient.send(msg);
             }
         }
-
-        // 【优化点1】普通用户也持续发送心跳，不再是哑巴
         if (!window.state.isHub) {
             if (window.state.mqttClient && window.state.mqttClient.isConnected()) {
                 const payload = JSON.stringify({ id: window.state.myId, ts: now });
@@ -52,7 +48,6 @@ export function init() {
                 msg.destinationName = CFG.mqtt.topic;
                 window.state.mqttClient.send(msg);
             }
-            
             if (window.state.mqttStatus === '在线') {
                 this.patrolHubs();
             } else {
@@ -68,14 +63,21 @@ export function init() {
       const p = new Peer(window.state.myId, CFG.peer);
       p.on('open', id => {
         window.state.myId = id; window.state.peer = p;
+        this._searchLogShown = false;
         window.util.log(`✅ 就绪: ${id.slice(0,6)}`);
         if (window.ui) window.ui.updateSelf();
-        // 初始连接：并行尝试所有Hub
         for(let i=0; i<HUB_COUNT; i++) this.connectTo(HUB_PREFIX + i);
       });
       p.on('connection', conn => this.setupConn(conn));
       p.on('error', e => { 
           if (e.type === 'peer-unavailable') return; 
+          if (e.type === 'disconnected') {
+              if (!this._searchLogShown) {
+                  window.util.log(' 寻找节点中...');
+                  this._searchLogShown = true;
+              }
+              return;
+          }
           window.util.log(`PeerErr: ${e.type}`); 
           if(e.type === 'network' || e.type === 'server-error') setTimeout(() => this.startMainPeer(), 5000);
       });
@@ -120,9 +122,6 @@ export function init() {
               return;
           }
           if (d.id === window.state.myId) return;
-          
-          // 【优化点2】移除错误的断开逻辑
-          
           const count = Object.keys(window.state.conns).filter(k => window.state.conns[k].open).length;
           if (!window.state.conns[d.id] && count < 6) this.connectTo(d.id);
         } catch(e){}
@@ -135,8 +134,6 @@ export function init() {
           window.util.log(`✅ MQTT连通!`);
           if (window.ui) window.ui.updateSelf();
           client.subscribe(CFG.mqtt.topic);
-          
-          // 立即发送一次在场证明
           const sendPresence = () => {
               const payload = JSON.stringify({ id: window.state.myId, ts: Date.now() });
               const msg = new Paho.MQTT.Message(payload);
@@ -144,10 +141,8 @@ export function init() {
               client.send(msg);
           };
           sendPresence();
-          // 快速重发几次以防丢失
           setTimeout(sendPresence, 1500);
           setTimeout(sendPresence, 4000);
-          
           if (host === CFG.mqtt.proxy_host) setInterval(sendPresence, 10000);
         },
         onFailure: (ctx) => {
@@ -163,7 +158,6 @@ export function init() {
       client.connect(opts);
     },
 
-    // 【优化点3】并行扫描所有Hub，不再串行等待
     patrolHubs() {
       for(let i=0; i<HUB_COUNT; i++) {
           const targetId = HUB_PREFIX + i;
@@ -176,8 +170,6 @@ export function init() {
     connectToAnyHub() {
       if (window.state.isHub || window.state.hubPeer) return;
       if (this._connectingHub) return;
-      
-      // 检查是否已经连上任意一个Hub
       for(let i=0; i<HUB_COUNT; i++) {
           if (window.state.conns[HUB_PREFIX + i] && window.state.conns[HUB_PREFIX + i].open) return;
       }
@@ -188,8 +180,6 @@ export function init() {
       
       window.util.log(`🔍 寻找房主 #${idx}...`);
       this.connectTo(targetId);
-
-      // 缩短判定时间到 2.5秒
       setTimeout(() => {
            this._connectingHub = false;
            if (window.state.isHub) return;
@@ -211,12 +201,10 @@ export function init() {
           if (window.ui) window.ui.updateSelf();
           window.util.log(`👑 据点建立成功 #${index}`);
       });
-      
       p.on('connection', conn => {
           conn.on('open', () => {
               const list = Object.keys(window.state.conns); list.push(window.state.myId);
               conn.send({t: 'PEER_EX', list: list});
-              
               const newPeer = conn.peer;
               Object.values(window.state.conns).forEach(c => {
                   if (c.open && c.peer !== newPeer) c.send({t: 'PEER_EX', list: [newPeer]});
@@ -224,7 +212,6 @@ export function init() {
           });
           conn.on('data', d => { if (d.t === 'HELLO') this.connectTo(d.id); });
       });
-      
       p.on('error', (e) => { 
           window.state.isHub = false; window.state.hubPeer = null; 
           if (e.type === 'unavailable-id') this.connectTo(id);
@@ -263,13 +250,10 @@ export function init() {
         if (window.ui) window.ui.renderList();
       });
       conn.on('data', d => this.handleData(d, conn));
-      
-      // 【优化点4】断线自动重连
       const onGone = () => { 
         const peerId = conn.peer;
         delete window.state.conns[peerId]; 
         if (window.ui) window.ui.renderList();
-        // 非Hub节点断开后尝试自动重连
         if (!peerId.startsWith(CFG.hub.prefix)) {
             setTimeout(() => this.connectTo(peerId), 2000);
         }
@@ -279,7 +263,6 @@ export function init() {
 
     async handleData(d, conn) {
       conn.lastPong = Date.now();
-      
       if (!d || !d.t) return;
       if (d.t === 'PING') { conn.send({t: 'PONG'}); return; }
       if (d.t === 'PONG') return;
@@ -362,7 +345,6 @@ export function init() {
       }); 
     },
     
-    // 【优化点5】更严格的僵尸连接清理
     cleanup() {
       const now = window.util.now();
       Object.keys(window.state.conns).forEach(pid => { 
@@ -370,7 +352,6 @@ export function init() {
           if (!c.open && now - (c.created || 0) > CFG.params.conn_timeout) {
               delete window.state.conns[pid];
           }
-          // 30秒无响应强制清理
           if (c.open && c.lastPong && (now - c.lastPong > CFG.params.ping_timeout) && !pid.startsWith(CFG.hub.prefix)) {
               c.close();
               delete window.state.conns[pid];
