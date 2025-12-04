@@ -6,15 +6,15 @@ export function init() {
 
   window.p2p = {
     _searchLogShown: false,
+    _waitLogShown: false,
 
-        start() {
+    start() {
       if (window.state.peer && !window.state.peer.destroyed) {
           window.util.log('[P2P] 已存在实例，跳过启动');
           return;
       }
 
       // 智能等待 PeerJS 库加载
-            // 智能等待 PeerJS 库加载
       if (typeof Peer === 'undefined') {
           if (!this._waitLogShown) {
               window.util.log('[P2P] ⏳ Peer库未就绪，开始等待...');
@@ -63,6 +63,7 @@ export function init() {
            window.util.log('❌ [致命错误] 检测到 WebRTC 不兼容 (可能是假死)');
            // 尝试一次软重置，而不是直接弹窗
            if (!window.state._retryCount) window.state._retryCount = 0;
+           
            if (window.state._retryCount < 3) {
                window.state._retryCount++;
                window.util.log(`🔄 尝试自动重启 P2P (${window.state._retryCount}/3)...`);
@@ -71,14 +72,12 @@ export function init() {
                    this.start(); 
                }, 1000);
            } else {
-                           } else {
                window.util.log('❌ 软重启失效，执行硬核重置...');
                localStorage.removeItem('p1_my_id'); // 顺便换个ID，确保万无一失
                setTimeout(() => location.reload(), 500);
            }
-           }
            return;
-        }
+          }
 
           if (e.type === 'disconnected') {
              if (!this._searchLogShown) {
