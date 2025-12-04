@@ -3,7 +3,6 @@ const CACHE_NAME = 'p1-v158-all-fixes';
 const CORE_ASSETS = [
   './',
   './index.html',
-  './easytier.js',
   './manifest.json'
 ];
 
