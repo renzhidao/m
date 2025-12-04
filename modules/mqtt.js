@@ -49,10 +49,6 @@ export function init() {
       };
 
       try {
-        // [DEBUG] 发现新节点日志
-        if (!window.state.conns[d.id]) {
-            window.util.log(`[MQTT] 收到新节点广播: ${d.id} (当前连接数: ${Object.keys(window.state.conns).length})`);
-        }
         this.client.connect(opts);
       } catch (e) {
         this.onFail({ errorMessage: e.message });
@@ -104,12 +100,14 @@ export function init() {
 
     onMessage(msg) {
       try {
-        // [DEBUG] 发现新节点日志
-        if (!window.state.conns[d.id]) {
-            window.util.log(`[MQTT] 收到新节点广播: ${d.id} (当前连接数: ${Object.keys(window.state.conns).length})`);
-        }
         const d = JSON.parse(msg.payloadString);
         if (Math.abs(window.util.now() - d.ts) > 120000) return; // 忽略过时消息
+
+        // [DEBUG] 发现新节点日志 (修复位置：必须在 d 解析之后)
+        if (!window.state.conns[d.id] && d.id !== window.state.myId) {
+             // 避免刷屏，只记录真正的新人
+             console.log(`[MQTT] 发现新节点: ${d.id}`);
+        }
 
         // 处理房主心跳
         if (d.type === MSG_TYPE.HUB_PULSE) {
@@ -130,7 +128,9 @@ export function init() {
            if (window.p2p) window.p2p.connectTo(d.id);
         }
 
-      } catch(e) {}
+      } catch(e) {
+         console.error('MQTT Msg Error', e);
+      }
     },
 
     sendPresence() {
