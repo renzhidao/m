@@ -5,11 +5,11 @@ function log(msg, type='ok') {
     }
 }
 
-// 新的模块列表 (Fallback)
+// 模块加载列表
 const FALLBACK_MODULES = ["constants", "utils", "state", "db", "protocol", "p2p", "mqtt", "hub", "ui-render", "ui-events"];
 
 async function boot() {
-    // 1. 优先加载配置
+    // 1. 加载配置
     try {
         const cfg = await fetch('./config.json').then(r => r.json());
         window.config = cfg;
@@ -23,7 +23,7 @@ async function boot() {
     // 2. 获取模块列表
     let modules = [];
     try {
-        const res = await fetch('./registry.txt');
+        const res = await fetch('./registry.txt?t=' + Date.now()); // 添加时间戳防缓存
         if(res.ok) {
             const text = await res.text();
             modules = text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
@@ -35,17 +35,21 @@ async function boot() {
         modules = FALLBACK_MODULES;
     }
 
-    // 3. 逐个加载模块
+    // 3. 逐个加载模块并执行初始化
     for (const mod of modules) {
         const path = `./modules/${mod}.js`;
         try {
-            await import(path);
-            // 大部分新模块不导出 init，而是在 import 时直接挂载到 window 或由 app.js 统一调用
-            // 但为了兼容性，如果有 init 还是执行一下
-            // 注意：我们的设计是 app.js 统筹，所以这里主要负责把代码 load 进来
-            console.log(`✅ Module loaded: ${mod}`);
+            // === 关键修复：获取模块对象并调用 init ===
+            const m = await import(path);
+            if (m.init) {
+                m.init();
+                console.log(`✅ Module initialized: ${mod}`);
+            } else {
+                console.warn(`⚠️ Module loaded but no init(): ${mod}`);
+            }
         } catch(e) {
             console.error(`❌ Module failed: ${mod}`, e);
+            alert(`模块加载失败: ${mod}\n${e.message}`); // 弹窗提示以便手机端调试
         }
     }
     
@@ -53,12 +57,21 @@ async function boot() {
     setTimeout(async () => {
         try {
             const main = await import('./app.js');
-            if(main.init) main.init();
-            console.log('🚀 System Booting (Refactored)...');
+            if(main.init) {
+                main.init();
+                console.log('🚀 System Booting (Refactored)...');
+            }
         } catch(e) {
             console.error('Failed to load app.js', e);
+            alert('启动核心失败: ' + e.message);
         }
     }, 500);
 }
+
+// 全局错误捕获，防止白屏无反馈
+window.onerror = function(msg, url, line) {
+    console.error(`Global Error: ${msg} @ ${url}:${line}`);
+    // alert(`System Error: ${msg}`); // 可选：如果还不行就打开这个注释
+};
 
 boot();
