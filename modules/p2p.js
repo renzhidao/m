@@ -1,7 +1,7 @@
 import { MSG_TYPE, NET_PARAMS } from './constants.js';
 
 export function init() {
-  console.log(' 加载模块: P2P');
+  console.log('📦 加载模块: P2P');
   const CFG = window.config;
 
   window.p2p = {
@@ -29,12 +29,10 @@ export function init() {
         p.on('connection', conn => this.setupConn(conn));
 
         p.on('error', e => {
-          // 忽略常见噪音
-          if (e.type === 'peer-unavailable') return; 
+          if (e.type === 'peer-unavailable') return; // 常见错误，忽略
           
-          // === 修正：不再弹窗，只记录日志 ===
           if (e.type === 'browser-incompatible') {
-             window.util.log('⚠️ PeerJS 报不兼容 (可忽略)');
+             alert('您的浏览器不支持 P2P (WebRTC)。请更换 Chrome/Edge。');
              return;
           }
 
@@ -43,7 +41,7 @@ export function init() {
                window.util.log('📡 正在重连 P2P 网络...');
                this._searchLogShown = true;
              }
-             try { p.reconnect(); } catch(_){}
+             p.reconnect();
              return;
           }
 

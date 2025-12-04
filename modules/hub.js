@@ -55,17 +55,6 @@ export function init() {
         
         if (window.ui) window.ui.updateSelf();
         window.util.log(`👑 据点建立成功 #${index}`);
-
-        // === 关键修复：双重检查 ===
-        // 如果成为房主时，MQTT 已经是在线状态（且非代理），则这属于“多余的房主”，立即辞职
-        if (window.state.mqttStatus === '在线') {
-             // 这里需要简单判断下是否为代理连接，虽然 state 里没存 isProxy，
-             // 但通常只有直连失败才会切代理。这里简单起见，只要 MQTT 在线就辞职，
-             // 因为连上 MQTT 就意味着能发现其他节点，不再需要自己当孤岛房主。
-             window.util.log('⚡ MQTT已在线，无需担任房主，正在辞职...');
-             setTimeout(() => this.resign(), 1000); // 延迟1秒辞职，避免闪烁
-        }
-        // ==========================
       });
 
       p.on('connection', conn => {
@@ -78,7 +67,7 @@ export function init() {
           // 同时也把新节点告诉其他人
           const newPeer = conn.peer;
           Object.values(window.state.conns).forEach(c => {
-            if (c.open & c.peer !== newPeer) {
+            if (c.open && c.peer !== newPeer) {
               c.send({ t: MSG_TYPE.PEER_EX, list: [newPeer] });
             }
           });
@@ -100,7 +89,7 @@ export function init() {
       });
     },
 
-    // 辞去房主
+    // 辞去房主 (新功能)
     resign() {
       if (!window.state.isHub || !window.state.hubPeer) return;
 
@@ -116,9 +105,6 @@ export function init() {
       window.state.hubStatus = null;
 
       if (window.ui) window.ui.updateSelf();
-      
-      // 辞职后，作为普通节点，应该立即去巡逻找其他房主，防止断联
-      if (window.p2p) window.p2p.patrolHubs();
     }
   };
 }
