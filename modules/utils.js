@@ -1,39 +1,15 @@
 export function init() {
-  console.log('📦 加载模块: Utils (增强版 v2)');
+  console.log('📦 加载模块: Utils');
 
   window.logSystem = {
     add(text) {
       const ts = window.util ? window.util.now() : Date.now();
-      const date = new Date(ts);
-      const timeStr = `${date.toLocaleTimeString()}.${date.getMilliseconds().toString().padStart(3, '0')}`;
-      const msg = `[${timeStr}] ${text}`;
-      
+      const msg = `[${new Date(ts).toLocaleTimeString()}] ${text}`;
       console.log(msg);
-      
       const el = document.getElementById('logContent'); if (!el) return;
-      
-      const div = document.createElement('div'); 
-      div.innerText = msg; 
-      div.style.borderBottom = '1px solid #333';
-      div.style.padding = '2px 0';
-      div.style.fontSize = '11px';
-      div.style.fontFamily = 'monospace';
-      
-      // 错误标红
-      if (text.includes('❌') || text.includes('💔') || text.includes('err') || text.includes('失败')) {
-          div.style.color = '#ff4444';
-      } else if (text.includes('✅') || text.includes('🔗')) {
-          div.style.color = '#44ff44';
-      } else if (text.includes('⚡')) {
-          div.style.color = '#ffff44';
-      }
-
-      el.prepend(div); // 改为 appendChild，符合阅读习惯
-      
-      // 容量扩充到 500 条
-      if (el.children.length > 500) el.removeChild(el.firstChild);
-      
-      // 自动滚动到底部
+      const div = document.createElement('div'); div.innerText = msg; div.style.borderBottom = '1px solid #333';
+      el.prepend(div);
+      if (el.children.length > 50) el.removeChild(el.lastChild);
       el.scrollTop = 0;
     }
   };
