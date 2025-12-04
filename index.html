@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="./icon-192.png">
   <link rel="manifest" href="manifest.json">
   
-  <title>P1 - 分布式聊天 (Modular)</title>
+  <title>P1 - 分布式聊天 (Refactored)</title>
   <link rel="stylesheet" href="style.css">
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
@@ -55,7 +55,13 @@
     </div>
     </header>
 
-    <div class="msg-list" id="msgList"></div>
+    <div class="msg-list" id="msgList">
+      <!-- 启动提示 -->
+      <div style="text-align:center;color:#666;margin-top:50px;" id="boot-msg">
+        正在启动系统...<br>
+        <small>如果长时间无反应，请尝试刷新或清除缓存</small>
+      </div>
+    </div>
 
     <section class="send-box">
       <div class="btn-icon" id="btnFile">📎</div>
@@ -87,9 +93,23 @@
 
 <div id="debug-console" style="display:none"></div>
 
-<script type="module" src="./loader.js"></script>
+<!-- 关键修改：增加版本号参数，强制不缓存 loader.js -->
+<script type="module" src="./loader.js?v=3"></script>
 <script>
-  if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+  if('serviceWorker' in navigator) {
+    // 每次加载页面都尝试更新 SW
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      reg.update();
+    });
+  }
+  
+  // 移除启动提示（当 JS 成功运行后会被覆盖，这里只是防止 JS 挂了用户不知道）
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+       const boot = document.getElementById('boot-msg');
+       if(boot && window.state) boot.style.display = 'none';
+    }, 2000);
+  });
 </script>
 </body>
 </html>

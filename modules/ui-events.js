@@ -60,7 +60,7 @@ export function init() {
         document.getElementById('settings-panel').style.display = 'none';
       });
 
-      // 文件上传 (修改后支持所有文件)
+      // 文件上传
       bind('btnFile', () => document.getElementById('fileInput').click());
       const fi = document.getElementById('fileInput');
       if (fi) {
@@ -74,10 +74,9 @@ export function init() {
             const b64 = await window.util.compressImage(file);
             window.protocol.sendMsg(b64, CHAT.KIND_IMAGE);
           } else {
-            // === 全新：处理通用文件 ===
+            // 处理通用文件
             window.util.log(`准备发送文件: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
             
-            // 限制大小 (例如 5MB)
             if (file.size > 5 * 1024 * 1024) {
                alert('文件过大，建议小于 5MB');
                return;
@@ -87,7 +86,6 @@ export function init() {
             reader.readAsDataURL(file);
             reader.onload = () => {
                const b64 = reader.result;
-               // 发送带有元数据的消息
                window.protocol.sendMsg(b64, CHAT.KIND_FILE, {
                  name: file.name,
                  size: file.size,
@@ -100,7 +98,7 @@ export function init() {
         };
       }
 
-      // 返回按钮 (移动端)
+      // 返回按钮
       bind('btnBack', () => document.getElementById('sidebar').classList.remove('hidden'));
 
       // 聊天切换
@@ -116,7 +114,7 @@ export function init() {
              window.state.activeChatName = name;
              window.state.unread[id] = 0;
              localStorage.setItem('p1_unread', JSON.stringify(window.state.unread));
-             window.state.oldestTs = Infinity; // 重置历史记录指针
+             window.state.oldestTs = Infinity;
 
              document.getElementById('chatTitle').innerText = name;
              document.getElementById('chatStatus').innerText = (id === CHAT.PUBLIC_ID) ? '全员' : '私聊';
@@ -124,39 +122,36 @@ export function init() {
              if (window.innerWidth < 768) document.getElementById('sidebar').classList.add('hidden');
              
              window.ui.clearMsgs();
-             // 加载历史
              window.state.loading = false; 
-             if(window.app) window.app.loadHistory(50); // 调用 app.js 里的加载历史
+             if(window.app) window.app.loadHistory(50);
              window.ui.renderList();
           }
         });
       }
     },
 
-    // === 新增：消息气泡长按全选 ===
+    // === 修正：长按全选且不阻止系统菜单 ===
     bindMsgEvents() {
-      // 为了性能，我们使用事件委托，或者只对新加入的元素绑定
-      // 这里简单起见，直接对 .msg-bubble 绑定 contextmenu (长按/右键)
-      
       document.querySelectorAll('.msg-bubble').forEach(el => {
-         if (el.dataset.bound) return; // 避免重复绑定
+         if (el.dataset.bound) return; 
          el.dataset.bound = 'true';
 
          el.addEventListener('contextmenu', (e) => {
-            e.preventDefault(); // 阻止默认菜单
-            // 选中文本
+            // 修正：移除 preventDefault，允许系统菜单弹出
+            // e.preventDefault(); 
+            
+            // 执行编程全选
             const selection = window.getSelection();
             const range = document.createRange();
             range.selectNodeContents(el);
             selection.removeAllRanges();
             selection.addRange(range);
             
-            window.util.log('已全选文本');
+            // 不干扰系统行为，用户现在可以看到“复制”按钮了
          });
       });
     }
   };
   
-  // 立即初始化
   window.uiEvents.init();
 }

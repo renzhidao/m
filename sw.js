@@ -1,13 +1,15 @@
-const CACHE_NAME = 'p1-v158-all-fixes';
+const CACHE_NAME = 'p1-v160-force-refresh'; // 升级版本号
 
 const CORE_ASSETS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './style.css'
 ];
 
-// 安装：逐个缓存核心资源，任一失败也不影响整体安装
+// 安装阶段：跳过等待，立即接管
 self.addEventListener('install', event => {
+  self.skipWaiting(); // <-- 关键：强制新 SW 立即生效
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     for (const url of CORE_ASSETS) {
@@ -20,66 +22,41 @@ self.addEventListener('install', event => {
   })());
 });
 
-// 激活：清理旧版本缓存
+// 激活阶段：立即清理旧缓存并控制所有客户端
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => Promise.all(
       keys.map(k => k !== CACHE_NAME ? caches.delete(k) : Promise.resolve())
-    ))
+    )).then(() => self.clients.claim()) // <-- 关键：立即控制当前页面，无需刷新两次
   );
 });
 
-// 请求拦截：导航请求提供离线兜底，其它请求网络优先+缓存回退
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // 页面导航：网络优先，失败回退到缓存的壳 (index.html)
+  // 调试模式：注册表和加载器永远网络优先，防止死循环
+  if (url.pathname.endsWith('registry.txt') || url.pathname.endsWith('loader.js') || url.pathname.endsWith('app.js')) {
+    event.respondWith(fetch(req).catch(() => caches.match(req)));
+    return;
+  }
+
   if (req.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        const fresh = await fetch(req);
-        return fresh;
-      } catch (e) {
-        const cache = await caches.open(CACHE_NAME);
-        const cached = await cache.match('./index.html');
-        if (cached) return cached;
-        return new Response('Offline', { status: 503, statusText: 'Offline' });
-      }
-    })());
+    event.respondWith(fetch(req).catch(() => caches.match('./index.html')));
     return;
   }
 
-  // 同源 GET 资源：网络优先，并写入缓存；失败用缓存兜底
-  if (url.origin === self.location.origin && req.method === 'GET') {
-    event.respondWith((async () => {
-      try {
-        const fresh = await fetch(req);
-        const cache = await caches.open(CACHE_NAME);
-        cache.put(req, fresh.clone());
-        return fresh;
-      } catch (e) {
-        const cached = await caches.match(req);
-        if (cached) return cached;
-        return new Response('Offline', { status: 503, statusText: 'Offline' });
-      }
-    })());
-    return;
-  }
-
-  // 跨域 GET (CDN 等)：网络优先，如果成功则顺手缓存，失败时尝试缓存回退
   if (req.method === 'GET') {
-    event.respondWith((async () => {
-      try {
-        const fresh = await fetch(req);
-        const cache = await caches.open(CACHE_NAME);
-        cache.put(req, fresh.clone());
-        return fresh;
-      } catch (e) {
-        const cached = await caches.match(req);
-        if (cached) return cached;
-        return new Response('Offline', { status: 503, statusText: 'Offline' });
-      }
-    })());
+    event.respondWith(
+      caches.match(req).then(cached => {
+        const networkFetch = fetch(req).then(res => {
+          const resClone = res.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(req, resClone));
+          return res;
+        });
+        // 缓存优先，但会在后台更新
+        return cached || networkFetch;
+      })
+    );
   }
 });

@@ -1,16 +1,18 @@
-import { NET_PARAMS, CHAT } from './modules/constants.js';
+import { NET_PARAMS, CHAT, APP_VERSION } from './modules/constants.js';
 
 export function init() {
-  console.log('🚀 启动主程序: App Core');
+  console.log(`🚀 启动主程序: App Core v${APP_VERSION}`);
 
   window.app = {
     async init() {
+      window.util.log(`正在启动 P1 v${APP_VERSION}...`);
+      
       // 1. 基础环境准备
       await window.util.syncTime();
       localStorage.setItem('p1_my_id', window.state.myId);
       await window.db.init();
       
-      // 2. UI 初始化 (渲染 + 事件)
+      // 2. UI 初始化
       if (window.ui && window.ui.init) window.ui.init();
       if (window.uiEvents && window.uiEvents.init) window.uiEvents.init();
 
@@ -21,12 +23,11 @@ export function init() {
       if (window.p2p) window.p2p.start();
       if (window.mqtt) window.mqtt.start();
 
-      // 5. 启动主循环 (Loop)
+      // 5. 启动主循环
       setInterval(() => this.loop(), NET_PARAMS.LOOP_INTERVAL);
 
       // 初始检查
       setTimeout(() => {
-        // 如果孤立无援，尝试连接房主或自己成为房主
         if (!window.state.isHub && Object.keys(window.state.conns).length < 1) {
            if (window.state.mqttStatus === '在线') {
                if (window.p2p) window.p2p.patrolHubs();
@@ -38,13 +39,9 @@ export function init() {
     },
 
     loop() {
-      // 维护 P2P 连接 (清理超时、Gossip)
       if (window.p2p) window.p2p.maintenance();
-      
-      // 重试未发送消息
       if (window.protocol) window.protocol.retryPending();
 
-      // MQTT 心跳 (由 mqtt 模块内部定时器处理，这里只做兜底或状态检查)
       if (!window.state.isHub && window.state.mqttStatus === '在线') {
          if (window.p2p) window.p2p.patrolHubs();
       } else if (!window.state.isHub && window.state.mqttStatus !== '在线') {
@@ -69,6 +66,5 @@ export function init() {
     }
   };
 
-  // 执行初始化
   window.app.init();
 }

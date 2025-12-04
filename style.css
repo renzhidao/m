@@ -47,6 +47,8 @@ body { margin: 0; font-family: -apple-system, sans-serif; background: var(--bg);
   padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; 
   word-break: break-word; position: relative; 
   width: fit-content; min-width: 20px;
+  /* 修复：显式允许文本选择 */
+  user-select: text; -webkit-user-select: text;
 }
 .msg-row.me .msg-bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
 .msg-row.other .msg-bubble { background: var(--bubble-other); color: #e5e7eb; border-bottom-left-radius: 4px; }
@@ -58,7 +60,7 @@ body { margin: 0; font-family: -apple-system, sans-serif; background: var(--bg);
 
 .send-box { min-height: 60px; border-top: 1px solid var(--line); background: var(--panel); padding: 10px; display: flex; align-items: flex-end; gap: 10px; }
 .input-wrap { flex: 1; background: #0a0c10; border: 1px solid #2b3040; border-radius: 20px; min-height: 40px; display: flex; align-items: center; padding: 4px 12px; }
-#editor { flex: 1; max-height: 100px; overflow-y: auto; outline: none; font-size: 15px; line-height: 1.4; }
+#editor { flex: 1; max-height: 100px; overflow-y: auto; outline: none; font-size: 15px; line-height: 1.4; user-select: text; -webkit-user-select: text; }
 #editor:empty:before { content: '发送消息...'; color: #555; }
 .send-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--primary); color: #fff; border: none; display: grid; place-items: center; flex-shrink: 0; cursor: pointer; }
 
