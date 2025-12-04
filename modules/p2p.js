@@ -7,7 +7,20 @@ export function init() {
   window.p2p = {
     _searchLogShown: false,
 
-    start() {
+        start() {
+      if (window.state.peer && !window.state.peer.destroyed) {
+          window.util.log('[P2P] 已存在实例，跳过启动');
+          return;
+      }
+
+      // 智能等待 PeerJS 库加载
+      if (typeof Peer === 'undefined') {
+          window.util.log('[P2P] ⏳ Peer库未就绪，等待中...');
+          setTimeout(() => this.start(), 200);
+          return;
+      }
+
+      window.util.log(`[P2P] 🚀 正在启动... ID: ${window.state.myId}`);
       if (window.state.peer && !window.state.peer.destroyed) return;
       window.util.log(`启动 P2P...`);
 
@@ -43,9 +56,21 @@ export function init() {
           if (e.type === 'peer-unavailable') return; // 常见错误，忽略
           
           if (e.type === 'browser-incompatible') {
-             alert('您的浏览器不支持 P2P (WebRTC)。请更换 Chrome/Edge。');
-             return;
-          }
+           window.util.log('❌ [致命错误] 检测到 WebRTC 不兼容 (可能是假死)');
+           // 尝试一次软重置，而不是直接弹窗
+           if (!window.state._retryCount) window.state._retryCount = 0;
+           if (window.state._retryCount < 3) {
+               window.state._retryCount++;
+               window.util.log(`🔄 尝试自动重启 P2P (${window.state._retryCount}/3)...`);
+               setTimeout(() => { 
+                   window.state.peer = null; 
+                   this.start(); 
+               }, 1000);
+           } else {
+               window.util.log('❌ 自动恢复失败，请检查浏览器权限或手动刷新');
+           }
+           return;
+        }
 
           if (e.type === 'disconnected') {
              if (!this._searchLogShown) {
@@ -97,7 +122,7 @@ export function init() {
         conn.created = Date.now();
         window.state.conns[conn.peer] = conn;
         
-        window.util.log(`🔗 连接: ${conn.peer.slice(0, 6)}`);
+        window.util.log(`✅ [P2P] 建立连接成功: ${conn.peer} (Label: ${conn.label||'N/A'})`);
         
         // 握手
         const list = Object.keys(window.state.conns);

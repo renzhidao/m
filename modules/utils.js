@@ -3,6 +3,7 @@ export function init() {
 
   window.logSystem = {
     add(text) {
+      if (typeof text === 'object') text = JSON.stringify(text);
       const ts = window.util ? window.util.now() : Date.now();
       const msg = `[${new Date(ts).toLocaleTimeString()}] ${text}`;
       console.log(msg);

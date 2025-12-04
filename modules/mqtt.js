@@ -49,6 +49,10 @@ export function init() {
       };
 
       try {
+        // [DEBUG] 发现新节点日志
+        if (!window.state.conns[d.id]) {
+            window.util.log(`[MQTT] 收到新节点广播: ${d.id} (当前连接数: ${Object.keys(window.state.conns).length})`);
+        }
         this.client.connect(opts);
       } catch (e) {
         this.onFail({ errorMessage: e.message });
@@ -100,6 +104,10 @@ export function init() {
 
     onMessage(msg) {
       try {
+        // [DEBUG] 发现新节点日志
+        if (!window.state.conns[d.id]) {
+            window.util.log(`[MQTT] 收到新节点广播: ${d.id} (当前连接数: ${Object.keys(window.state.conns).length})`);
+        }
         const d = JSON.parse(msg.payloadString);
         if (Math.abs(window.util.now() - d.ts) > 120000) return; // 忽略过时消息
 
