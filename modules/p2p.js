@@ -29,6 +29,17 @@ export function init() {
         p.on('connection', conn => this.setupConn(conn));
 
         p.on('error', e => {
+          
+          // === 自动修复：ID被占用（僵尸连接）===
+          if (e.type === 'unavailable-id') {
+             window.util.log('⚠️ ID冲突，正在自动更换...');
+             const newId = 'u_' + Math.random().toString(36).substr(2, 9);
+             localStorage.setItem('p1_my_id', newId);
+             window.state.myId = newId;
+             location.reload(); // 刷新页面以使用新ID
+             return;
+          }
+
           if (e.type === 'peer-unavailable') return; // 常见错误，忽略
           
           if (e.type === 'browser-incompatible') {
