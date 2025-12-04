@@ -14,8 +14,12 @@ export function init() {
       }
 
       // 智能等待 PeerJS 库加载
+            // 智能等待 PeerJS 库加载
       if (typeof Peer === 'undefined') {
-          window.util.log('[P2P] ⏳ Peer库未就绪，等待中...');
+          if (!this._waitLogShown) {
+              window.util.log('[P2P] ⏳ Peer库未就绪，开始等待...');
+              this._waitLogShown = true;
+          }
           setTimeout(() => this.start(), 200);
           return;
       }
@@ -67,7 +71,11 @@ export function init() {
                    this.start(); 
                }, 1000);
            } else {
-               window.util.log('❌ 自动恢复失败，请检查浏览器权限或手动刷新');
+                           } else {
+               window.util.log('❌ 软重启失效，执行硬核重置...');
+               localStorage.removeItem('p1_my_id'); // 顺便换个ID，确保万无一失
+               setTimeout(() => location.reload(), 500);
+           }
            }
            return;
         }

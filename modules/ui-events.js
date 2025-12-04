@@ -42,14 +42,27 @@ export function init() {
         if (el) el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
       });
       
+      // 日志长按全选
+      const logEl = document.getElementById('logContent');
+      if (logEl) {
+          logEl.addEventListener('contextmenu', (e) => {
+              e.preventDefault();
+              const selection = window.getSelection();
+              const range = document.createRange();
+              range.selectNodeContents(logEl);
+              selection.removeAllRanges();
+              selection.addRange(range);
+              window.util.log('📋 日志已全选');
+          });
+      }
+      
       // 下载日志 (修复)
       bind('btnDlLog', () => {
         const el = document.getElementById('logContent');
         if (!el) return;
-        const text = Array.from(el.children)
-          .map(div => div.innerText)
-          .reverse()
-          .join('\n');
+        const text = (window.logSystem && window.logSystem.fullHistory) 
+          ? window.logSystem.fullHistory.join('\n') 
+          : 'Log Error';
           
         const blob = new Blob([text], {type: 'text/plain'});
         const url = URL.createObjectURL(blob);
